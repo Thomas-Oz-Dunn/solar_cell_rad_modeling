@@ -1,0 +1,8 @@
+﻿material,particle type,energy (MeV),fluence (e/cm^2),V_oc,I_SC,P_max,FF
+GaInp/GaAs/Ge,electron,1,1.00E+13,1,0.98,0.98,1
+GaInp/GaAs/Ge,electron,1,1.00E+14,1,0.96,0.95,0.989583333
+GaInp/GaAs/Ge,electron,1,1.00E+15,0.96,0.91,0.87,0.995879121
+GaInp/GaAs/Ge,electron,1,1.00E+16,0.84,0.862,0.688,0.950171252
+GaInp/GaAs/Ge,electron,1,5.00E+16,0.72,0.78,0.51,0.908119658
+GaInp/GaAs/Ge,electron,10,5.00E+15,0.76,0.67,0.44,0.86410055
+GaInp/GaAs/Ge,electron,10,1.00E+16,0.741,0.642,0.392,0.824010662

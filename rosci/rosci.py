@@ -2,19 +2,187 @@
 # TODO-TD: pyproject.toml
 
 import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
 import scipy.constants as const
+
+# Quick converters
+def wavelength_to_freq(wavelength):
+    return const.c / wavelength
+
+def freq_to_energy(frequency):
+    return const.h * frequency
+
+def wavelength_to_energy(wavelength):
+    return freq_to_energy(wavelength_to_freq(wavelength))
+
+def energy_to_wavelength(energy):
+    freq = energy / const.h
+    return const.c / freq
+
 
 def short_circuit_current(I_01, I_02, V_OC, ideality_factor, temperature):
     """
     Calculate short circuit current from multi diode model
+
+    Parameters
+    ----------
+    I_01
+        Base diode 1 current
+
+    I_02
+        Base diode 2 current
+
+    V_OC
+        Open circuit voltage
+
+    ideality_factor
+        Diode ideality factor
+
+    temperature
+        Temperature in kelvin
+
+    TODO-TD: label source of equation
     TODO-TD: double check units, Kelvin?
+    TODO-TD: vectorize to take in np.arrays instead of just scalar?
     """
     V_t = (const.k * temperature) / const.e
 
-    # in qausi-neutral region
+    # diffusion current in qausi-neutral region
     diffusion_current = I_01 * np.exp(V_OC / V_t) 
-    # defect drive in depletion region
+
+    # defect driven Recomb current  in depletion region
     recombination_current = I_02 * np.exp(V_OC / (ideality_factor * V_t)) 
     
     return diffusion_current + recombination_current
 
+
+
+def eqe(
+    thickness, 
+    absorption_coeff, 
+    wavelength, 
+    recomb_rate, 
+    incident_power
+):
+    """
+    Calculate External Quantum Efficiency (EQE) from Livingston 2025
+
+    Impact of device design parameters on quantum efficiency of solar cell and revelation of recombination mechanism
+
+    Parameters
+    ----------
+    thickness 
+        thickness of material
+
+    absorbtion_coeff
+        material absorbtion coefficient alpha
+
+    wavelength
+        Wavelength of light
+    
+    recomb_rate
+        Material recombination rate
+    
+    incident_power
+        Incident power at wavelength
+
+    TODO-TD: double check the units of h
+    """
+    photon_energy = wavelength_to_energy(wavelength)
+    return thickness * (absorption_coeff - photon_energy  * recomb_rate / incident_power)
+
+def calc_InP_absorbtion_coeff_300K(frequency):
+    """
+    Calculate alpha for InP at 300K
+
+    from Yamaguchi,  Uemera 1984
+    Electron Irradiation Damage in
+    Radiation-Resistant InP Solar Cells
+
+    """
+    eV = freq_to_energy(frequency)
+    if eV > 1.58:
+        return 1.1e7 * np.exp(-9.9 / eV)
+    elif eV > 1.31:
+        return 4e4 * np.sqrt(eV - 1.31)
+    else:
+        return None
+
+    
+def eqe_dynamic_alpha_InP_300K(
+    thickness, 
+    wavelength, 
+    recomb_rate, 
+    incident_power
+):
+    """
+    TODO-TD: vectorize across an array spectrum?
+    """
+    freq = wavelength_to_freq(wavelength)
+    alpha = calc_InP_absorbtion_coeff_300K(freq)
+    return eqe(
+        thickness, 
+        alpha, 
+        wavelength, 
+        recomb_rate, 
+        incident_power
+    )
+
+def calc_InP_300K_eqe_dist(thickness, recomb_rate):
+    """
+    
+    """
+    df = pd.read_csv('./wmo.csv', delim_whitespace=True)
+    wavelengths = df['nm']
+    power_density = df['W/sm/nm']
+    eqe = eqe_dynamic_alpha_InP_300K(
+        thickness, 
+        wavelengths, 
+        recomb_rate, 
+        power_density
+    )
+
+
+def plot_bandgaps_on_spectrum(out_path = './Bandgaps_AMO0.png'):
+
+    # Sun spectral model
+    df = pd.read_csv('./wmo.csv', delim_whitespace=True)
+
+    # TODO-TD: store as dataframe to append new materials to
+    # TODO-TD: bandgap vs lattice constant graph as well?
+    semiconductor_bandgap = {
+        'Ge': 0.67,
+        'Si': 1.14,
+        'GaAs': 1.4,
+        'GaN': 3.44,
+        r'$InGaP_2$': 1.8,
+    }
+
+    plt.plot(
+        df['nm'][:15*len(df['nm'])//16], 
+        df['W/sm/nm'][:15*len(df['W/sm/nm'])//16], 
+        color='k', 
+        label='Solar AM0 $(1367 W/m^2)$'
+    )
+    mini = np.min(df['W/sm/nm'])
+    maxa = np.max(df['W/sm/nm'])
+    cs = ['b', 'orange', 'r', 'g', 'purple']
+    for i, (k, v) in enumerate(semiconductor_bandgap.items()):
+        plt.vlines(
+            energy_to_wavelength(v), 
+            mini, 
+            maxa, 
+            ls='--', 
+            colors=cs[i],
+            label=fr'{k} $E_g$: {v} eV'
+        )
+
+    plt.xlabel('Wavelength (nm)')
+    plt.title('Solar AM0 Spectral Irradiance\nWavelengths of semiconductor bandgap energies')
+    plt.ylabel('Spectral Irradiance $(W/m^2/nm)$')
+    plt.grid(ls='--', which='both')
+    plt.legend()
+    plt.xscale('linear')
+    plt.savefig(out_path)

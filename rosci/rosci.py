@@ -1,4 +1,4 @@
-# Radiation-Optimizing Solar Cell Investigator
+# Radiation-Optimizing Solar Cell Investigator (ROSCI)
 # TODO-TD: pyproject.toml
 
 import numpy as np

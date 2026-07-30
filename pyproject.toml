@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rosci"
+version = "0.0.1"
+description = "Radiation-Optimizing Solar Cell Investigator"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Thomas Dunn", email = "thomasjohndunn@yahoo.com" }
+]
+
+dependencies = [
+    "numpy>=1.22.0",
+    "matplotlib>=3.5.0",
+    "pandas>=1.4.0",
+    "scipy>=1.8.0",
+]
+
+[project.optional-dependencies]
+notebooks = [
+    "jupyter",
+    "ipython",
+]

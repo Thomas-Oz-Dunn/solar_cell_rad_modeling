@@ -1,5 +1,4 @@
 # Radiation-Optimizing Solar Cell Investigator (ROSCI)
-# TODO-TD: pyproject.toml
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +6,6 @@ import pandas as pd
 
 import scipy.constants as const
 
-# Quick converters
 def wavelength_to_freq(wavelength):
     return const.c / wavelength
 
@@ -137,7 +135,7 @@ def calc_InP_300K_eqe_dist(thickness, recomb_rate):
     df = pd.read_csv('./wmo.csv', delim_whitespace=True)
     wavelengths = df['nm']
     power_density = df['W/sm/nm']
-    eqe = eqe_dynamic_alpha_InP_300K(
+    return eqe_dynamic_alpha_InP_300K(
         thickness, 
         wavelengths, 
         recomb_rate, 

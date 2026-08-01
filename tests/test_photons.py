@@ -10,7 +10,6 @@ import rosci
 def test_wavelength_energy_roundtrip(wavelength):
     energy = rosci.wavelength_to_energy(wavelength)
     returned_wavelength = rosci.energy_to_wavelength(energy)
-    
     assert returned_wavelength == pytest.approx(wavelength, rel=1e-12)
 
 
@@ -22,5 +21,4 @@ def test_wavelength_energy_roundtrip(wavelength):
 def test_energy_wavelength_roundtrip(energy):
     wavelength = rosci.energy_to_wavelength(energy)
     returned_energy = rosci.wavelength_to_energy(wavelength)
-    
     assert returned_energy == pytest.approx(energy, rel=1e-12)

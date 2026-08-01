@@ -1,0 +1,8 @@
+Material,Bandgap (Eg),a (A),b (A),c (A),Crystal Structure
+Ge,0.67 eV,5.658,5.658,5.658,Diamond (FCC)
+Si,1.14 eV,5.43102,5.43102,5.43102,Diamond (FCC)
+GaAs,1.424 eV,5.653,5.653,5.653,Zinc blende (FCC)
+GaN,3.44 eV,3.533,3.533,5.185,Wurtzite
+InP,1.344 eV,5.8687,5.8687,5.8687,Zinc blende (FCC)
+AlN,6.015,3.1117,3.1117,4.9788,Wurtzite
+InAs,0.354,6.0583,6.0583,6.0583,Zinc blende (FCC)

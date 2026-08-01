@@ -19,6 +19,26 @@ def energy_to_wavelength(energy):
     freq = energy / const.h
     return const.c / freq
 
+def vegards_law(
+    a_A,
+    a_B,
+    x, 
+    b=None
+):
+    """
+    Interpolate between materials
+    Lattice constant calculator
+
+    https://en.wikipedia.org/wiki/Vegard%27s_law
+    a_(A_(1-x)B_x) = (1-x) a_A + x a_B
+
+    Use b for bandgap bowing parameter
+    """
+    if b is None:
+        return (1-x) * a_A + x * a_B
+    else:
+        return (1-x) * a_A + x * a_B - b * x *(1 - x)
+
 
 def short_circuit_current(I_01, I_02, V_OC, ideality_factor, temperature):
     """

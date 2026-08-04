@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
+from pathlib import Path
 import scipy.constants as const
 
 def wavelength_to_freq(wavelength):
@@ -162,39 +162,73 @@ def calc_InP_300K_eqe_dist(thickness, recomb_rate):
         power_density
     )
 
+def plot_bandgap_lattice_constant(out_path = './Bandgaps_Lattice.png'):
+    # TODO-TD: Use vegards_law to interpolate alloys
+    # Vurgaftman 2001
+    # Band parameters for III–V compound semiconductors and their alloys for curvature
+    df = pd.read_csv('data\semiconductors.csv')
+    df['Bandgap (Eg)'] = df['Bandgap (Eg)'].str.replace(' eV', '').astype(float)
+
+    color_dict = {
+        'Diamond (FCC)': 'red', 
+        'Zinc blende (FCC)': 'blue', 
+        'Wurtzite': 'green',
+    }
+
+    plt.figure(figsize=(8, 6))
+
+    for structure, color in color_dict.items():
+        subset = df[df['Crystal Structure'] == structure]
+        plt.scatter(
+            subset['a (A)'],
+            subset['Bandgap (Eg)'],
+            color=color,
+            s=50,
+            label=structure
+        )
+
+
+    for _, row in df.iterrows():
+        plt.annotate(
+            row['Material'], 
+            (row['a (A)'], row['Bandgap (Eg)']),
+            textcoords="offset points", 
+            xytext=(0, 10)
+        )
+
+    plt.legend(title="Crystal Structure")
+    plt.title('Semiconductor Bandgap vs. Lattice Constant (a)')
+    plt.xlabel('Lattice Constant a (A)')
+    plt.ylabel('Bandgap $E_g$ (eV)')
+    plt.grid(ls='--', alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(out_path)
+
 
 def plot_bandgaps_on_spectrum(out_path = './Bandgaps_AMO0.png'):
 
-    # Sun spectral model
-    df = pd.read_csv('./wmo.csv', delim_whitespace=True)
+    amo_df = pd.read_csv(Path('./data/wmo.csv'), delim_whitespace=True)
+    material_df = pd.read_csv(Path('./data/semiconductors.csv'))
 
-    # TODO-TD: store as dataframe to append new materials to
-    # TODO-TD: bandgap vs lattice constant graph as well?
-    semiconductor_bandgap = {
-        'Ge': 0.67,
-        'Si': 1.14,
-        'GaAs': 1.4,
-        'GaN': 3.44,
-        r'$InGaP_2$': 1.8,
-    }
+    material_df['Bandgap (Eg)'] = material_df['Bandgap (Eg)'].str.replace(' eV', '').astype(float)
+
 
     plt.plot(
-        df['nm'][:15*len(df['nm'])//16], 
-        df['W/sm/nm'][:15*len(df['W/sm/nm'])//16], 
+        amo_df['nm'][:15*len(amo_df['nm'])//16], 
+        amo_df['W/sm/nm'][:15*len(amo_df['W/sm/nm'])//16], 
         color='k', 
         label='Solar AM0 $(1367 W/m^2)$'
     )
-    mini = np.min(df['W/sm/nm'])
-    maxa = np.max(df['W/sm/nm'])
-    cs = ['b', 'orange', 'r', 'g', 'purple']
-    for i, (k, v) in enumerate(semiconductor_bandgap.items()):
+    mini = np.min(amo_df['W/sm/nm'])
+    maxa = np.max(amo_df['W/sm/nm'])
+    
+    for row in enumerate(material_df.iterrows()):
         plt.vlines(
-            energy_to_wavelength(v), 
+            energy_to_wavelength(row['Bandgap (Eg)']), 
             mini, 
             maxa, 
             ls='--', 
-            colors=cs[i],
-            label=fr'{k} $E_g$: {v} eV'
+            label=fr"{row['Material']} $E_g$: {row['Bandgap (Eg)']} eV"
         )
 
     plt.xlabel('Wavelength (nm)')

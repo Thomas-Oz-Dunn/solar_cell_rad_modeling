@@ -200,8 +200,8 @@ def calc_InP_300K_eqe_dist(thickness, recomb_rate):
     )
 
 def plot_bandgap_lattice_constant(
-    semiconductor_data='./data/semiconductors.csv', 
-    out_path='./Bandgaps_Lattice.png'
+    semiconductor_data='./data/semiconductors.csv',
+    ax=None
 ):
     """
     PLot semiconductor bandgaps vs lattice constants
@@ -218,12 +218,12 @@ def plot_bandgap_lattice_constant(
         'Zinc blende (FCC)': 'blue',
         'Wurtzite': 'green',
     }
-
-    plt.figure(figsize=(8, 6))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
 
     for structure, color in color_dict.items():
         subset = df[df['Crystal Structure'] == structure]
-        plt.scatter(
+        ax.scatter(
             subset['a (A)'],
             subset['Bandgap (Eg)'],
             color=color,
@@ -232,35 +232,36 @@ def plot_bandgap_lattice_constant(
         )
 
     for _, row in df.iterrows():
-        plt.annotate(
+        ax.annotate(
             row['Material'],
             (row['a (A)'], row['Bandgap (Eg)']),
             textcoords="offset points",
             xytext=(0, 10)
         )
 
-    plt.legend(title="Crystal Structure")
+    ax.legend(title="Crystal Structure")
     plt.title('Semiconductor Bandgap vs. Lattice Constant (a)')
     plt.xlabel('Lattice Constant a (A)')
     plt.ylabel('Bandgap $E_g$ (eV)')
     plt.grid(ls='--', alpha=0.3)
     plt.tight_layout()
-    plt.savefig(out_path)
+    return ax
 
 
 def plot_bandgaps_on_spectrum(
     semiconductor_data='./data/semiconductors.csv', 
-    out_path='./Bandgaps_AMO0.png'
+    ax=None
 ):
     """
-    PLot semiconductor bandgaps on solar spectrum
+    Plot semiconductor bandgaps on solar spectrum
     """
     material_df = pd.read_csv(Path(semiconductor_data))
     amo_df = pd.read_csv(Path('./data/wmo.csv'), delim_whitespace=True)
 
     material_df['Bandgap (Eg)'] = material_df['Bandgap (Eg)'].str.replace(' eV', '').astype(float)
 
-    plt.figure(figsize=(10, 6))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
 
     plt.plot(
         amo_df['nm'][:15*len(amo_df['nm'])//16],
@@ -275,7 +276,7 @@ def plot_bandgaps_on_spectrum(
         eg_joules = eV_to_joules(row['Bandgap (Eg)'])
         wavelength_nm = energy_to_wavelength(eg_joules) * 1e9
 
-        plt.vlines(
+        ax.vlines(
             wavelength_nm,
             mini,
             maxa,
@@ -290,4 +291,4 @@ def plot_bandgaps_on_spectrum(
     plt.legend()
     plt.xscale('linear')
     plt.tight_layout()
-    plt.savefig(out_path)
+    return ax

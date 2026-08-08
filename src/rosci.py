@@ -199,7 +199,10 @@ def calc_InP_300K_eqe_dist(thickness, recomb_rate):
         power_density
     )
 
+# TODO-TD: compare indirect and direct bandgaps?
+
 def plot_bandgap_lattice_constant(
+    crystal_types=None,
     alloys=None,
     semiconductor_data='../data/semiconductors.csv',
     ax=None,
@@ -224,6 +227,10 @@ def plot_bandgap_lattice_constant(
 
     for structure, color in color_dict.items():
         subset = df[df['Crystal Structure'] == structure]
+        if crystal_types is not None:
+            if structure not in crystal_types:
+                continue
+
         ax.scatter(
             subset['a (A)'],
             subset['Bandgap (Eg)'],
@@ -233,6 +240,10 @@ def plot_bandgap_lattice_constant(
         )
 
     for _, row in df.iterrows():
+        if crystal_types is not None:
+            if row['Crystal Structure'] not in crystal_types:
+                continue
+
         ax.annotate(
             row['Material'],
             (row['a (A)'], row['Bandgap (Eg)']),
@@ -242,9 +253,12 @@ def plot_bandgap_lattice_constant(
 
     if alloys is not None:
         # Expected format ("GaAs", "InAs", 0.5, bowing_parameter (Optional))
-        # Alloy dictionary / dataclass?
+        # TODO-TD: Alloy dictionary / dataclass?
 
         df_mat = df.set_index('Material')
+        bandgaps = []
+        lattices = []
+
         for alloy in alloys:
             comp1 = alloy[0]
             comp2 = alloy[1]
@@ -268,21 +282,29 @@ def plot_bandgap_lattice_constant(
 
                 alloy_lattice = vegards_law(a1, a2, x)
 
-                # TODO-TD: interp dotted line? 
-                # bowing parameter & x sweep?
-                ax.scatter(
-                    alloy_lattice,
-                    alloy_bandgap,
-                    c='grey',
-                    s=45
-                )
-                alloy_name = f'({comp1}_{1-x})({comp2}_{x})'
+                bandgaps.append(alloy_bandgap)
+                lattices.append(alloy_lattice)
+
+                # Triple braces?????
+                # TODO-TD: create a formatting function to detect common bas parameters and merge
+                alloy_name = f"$({comp1})_{{{1 - x:.2f}}}({comp2})_{{{x:.2f}}}$"
+
                 ax.annotate(
                     alloy_name,
                     (alloy_lattice, alloy_bandgap),
                     textcoords="offset points",
                     xytext=(0, 10)
                 )
+
+        # TODO-TD: interp dotted line? 
+        # bowing parameter & x sweep?
+        ax.scatter(
+            lattices,
+            bandgaps,
+            c='grey',
+            s=45,
+            label='Alloys'
+        )
 
     ax.legend(title="Crystal Structure")
     plt.title('Semiconductor Bandgap vs. Lattice Constant (a)')
@@ -291,7 +313,6 @@ def plot_bandgap_lattice_constant(
     plt.grid(ls='--', alpha=0.3)
     plt.tight_layout()
     return ax
-
 
 
 def plot_bandgaps_on_spectrum(

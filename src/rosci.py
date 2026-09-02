@@ -68,7 +68,7 @@ def vegards_law(
         return (1-x) * a_A + x * a_B - b * x * (1 - x)
 
 
-def short_circuit_current(I_01, I_02, V_OC, ideality_factor, temperature):
+def short_circuit_current(I_01, I_02, V_OC, ideality_factor, temperature,):
     """
     Calculate short circuit current from multi diode model
 

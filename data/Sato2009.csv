@@ -1,0 +1,10 @@
+material, energy, K_L
+InGap, 30 keV ,6.3e-3
+InGap, 150 keV ,1.4e-3
+GaAs, 150 keV, 3.2e-6
+InGap, 3 MeV , 3e-3
+GaAs, 3 MeV, 1.3e-6
+Ge, 3 MeV, 8.2e-8
+InGap, 10 MeV , 5.5e-4
+GaAs, 10 MeV, 1.2e-6
+Ge, 10 MeV, 2.2e-8

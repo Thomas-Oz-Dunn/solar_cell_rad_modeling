@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# TODO-TD: scale diffusion lengths to m instead of um
+
 def main():
     COLORS = {
         'electron': "#1f26b4",
@@ -69,29 +71,46 @@ def main():
     a2.set_xscale('log')
     a2.set_yscale('log')
     a2.grid(ls='--')
+    f1.suptitle('L_n vs Fluence & DDD in GaAs')
     plt.tight_layout()
 
     f1.savefig('./data/L_n_fluence_DDD.png')
     plt.close(f1)
 
-    f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
+    f2, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
     plot_grouped(a1, 'fluence (e/cm^2)', 'L_p', True)
     a1.grid(ls='--')
     a1.set_xlabel('Fluence (e/cm^2)')
     a1.set_xscale('log')
     a1.set_yscale('log')
+    a2.set_ylabel('L_p (um)')
     plt.tight_layout()
 
     plot_grouped(a2, 'DDD', 'L_p')
     a2.set_xlabel('DDD (MeV/g)')
-    a2.set_ylabel('L_p (um)')
     a2.set_xscale('log')
     a2.set_yscale('log')
     a2.grid(ls='--')
+    f2.suptitle('L_p vs Fluence & DDD in GaAs')
     plt.tight_layout()
+    f2.savefig('./data/L_p_fluence_DDD.png')
+    plt.close(f2)
 
-    f1.savefig('./data/L_p_fluence_DDD.png')
-    plt.close(f1)
+    def I02_DDD(I_02_0, DDD, DDD_0):
+        return I_02_0 * (1 + DDD/DDD_0)
+
+    f3, a1 = plt.subplots(1, 1, figsize=(6, 6))
+    plot_grouped(a1, 'DDD', 'I_02', True)
+    a1.set_xlabel('DDD (MeV/g)')
+    a1.set_ylabel('I_02')
+    a1.set_xscale('log')
+    a1.set_yscale('log')
+    a1.grid(ls='--')
+    a1.set_title('I_02 vs DDD in GaAs')
+    f3.savefig('./data/I02_DDD.png')
+    plt.close(f3)
+
+    # TODO-TD: plot  model line in range for each particle energy
 
 if __name__ == '__main__':
     main()

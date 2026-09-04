@@ -3,53 +3,95 @@ import matplotlib.pyplot as plt
 
 def main():
     COLORS = {
-        'electron': "#1f26b4", 
+        'electron': "#1f26b4",
         'proton': "#d60303"
     }
     MeV_MARKERS = {1: 'o', 3: 's', 10: 'd'}  # by energy (MeV)
 
-    df = pd.read_csv('../data/SalzbergerEtal2018.csv', encoding='utf-8-sig')
+    df = pd.read_csv('./data/SalzbergerEtal2018.csv')
     df.columns = [c.strip() for c in df.columns]
     print("Rows:", len(df))
     print("Materials:", sorted(df['material'].unique()))
     print("Particle types:", sorted(df['particle type'].unique()))
     print("Energies (MeV):", sorted(df['energy (MeV)'].unique()))
 
-    dfNIEL = pd.read_csv('../data/SRNIEL_TABLE.csv', encoding='utf-8-sig')
+    dfNIEL = pd.read_csv('./data/SRNIEL_TABLE.csv')
     dfNIEL.columns = [c.strip() for c in dfNIEL.columns]
 
-    # TODO-TD: convert fluence to DDD using NIEL lookup?
-    df2 = df.merge(dfNIEL, on=['particle', 'energy (MeV)'], how='left')
+    df2 = df.merge(dfNIEL, on=['particle type', 'energy (MeV)'], how='left')
+    df2['DDD'] = df2['fluence (e/cm^2)'].astype(float) * df2['NIEL (MeV cm^s/g)'].astype(float) 
 
-    f, a = plt.subplot()
-    for ptype in df['particle type'].unique():
-        sub_df = df[df['particle type'] == ptype]
-        for energy in sub_df['energy (MeV)'].unique():
-            sub2df = sub_df[sub_df['energy (MeV)'] == energy]
-            a.plot(
-                sub2df['fluence (e/cm^2)'], 
-                sub2df['L_n'],
-                marker=MeV_MARKERS.get(energy, 'o'),
-                color=COLORS.get(ptype, 'gray'),
-                linestyle='-',
-                label=f"{ptype}, {energy} MeV",
-            )
+    def plot_grouped(
+        ax, 
+        x_col,
+        y_col,
+        do_line=False
+    ):
+        """
+        Combine same plot technique
+        """
+        for ptype in df2['particle type'].unique():
+            sub_df = df2[df2['particle type'] == ptype]
+            for energy in sorted(sub_df['energy (MeV)'].unique()):
+                sub_e = sub_df[sub_df['energy (MeV)'] == energy]
+                for material in sub_e['material'].unique():
+                    sub2df = sub_e[sub_e['material'] == material].sort_values(x_col)
+                    # TODO-TD: use kwargs
+                    if do_line:
+                        ax.plot(
+                            sub2df[x_col],
+                            sub2df[y_col],
+                            marker=MeV_MARKERS.get(energy, 'o'),
+                            color=COLORS.get(ptype, 'gray'),
+                            label=f"{ptype}, {energy} MeV, {material}",
+                        )
+                    else:
+                        ax.scatter(
+                            sub2df[x_col],
+                            sub2df[y_col],
+                            marker=MeV_MARKERS.get(energy, 'o'),
+                            color=COLORS.get(ptype, 'gray'),
+                            label=f"{ptype}, {energy} MeV, {material}",
+                        )
+        ax.legend(fontsize='small')
 
+    f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
+    plot_grouped(a1, 'fluence (e/cm^2)', 'L_n', True)
+    a1.grid(ls='--')
+    a1.set_xlabel('Fluence (e/cm^2)')
+    a1.set_ylabel('L_n (um)')
+    a1.set_xscale('log')
+    a1.set_yscale('log')
+    plt.tight_layout()
 
+    plot_grouped(a2, 'DDD', 'L_n')
+    a2.set_xlabel('DDD (MeV/g)')
+    a2.set_xscale('log')
+    a2.set_yscale('log')
+    a2.grid(ls='--')
+    plt.tight_layout()
 
-    f, a = plt.subplot()
-    for ptype in df['particle type'].unique():
-        sub_df = df[df['particle type'] == ptype]
-        for energy in sub_df['energy (MeV)'].unique():
-            sub2df = sub_df[sub_df['energy (MeV)'] == energy]
-            a.plot(
-                sub2df['fluence (e/cm^2)'] * sub2df['NIEL (MeV cm^s/g)'], 
-                sub2df['L_n'],
-                marker=MeV_MARKERS.get(energy, 'o'),
-                color=COLORS.get(ptype, 'gray'),
-                linestyle='-',
-                label=f"{ptype}, {energy} MeV",
-            )
+    f1.savefig('./data/L_n_fluence_DDD.png')
+    plt.close(f1)
+
+    f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
+    plot_grouped(a1, 'fluence (e/cm^2)', 'L_p', True)
+    a1.grid(ls='--')
+    a1.set_xlabel('Fluence (e/cm^2)')
+    a1.set_xscale('log')
+    a1.set_yscale('log')
+    plt.tight_layout()
+
+    plot_grouped(a2, 'DDD', 'L_p')
+    a2.set_xlabel('DDD (MeV/g)')
+    a2.set_ylabel('L_p (um)')
+    a2.set_xscale('log')
+    a2.set_yscale('log')
+    a2.grid(ls='--')
+    plt.tight_layout()
+
+    f1.savefig('./data/L_p_fluence_DDD.png')
+    plt.close(f1)
 
 if __name__ == '__main__':
     main()

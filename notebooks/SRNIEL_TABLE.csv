@@ -1,0 +1,4 @@
+particle, energy (MeV), NIEL (MeV cm^s/g)
+electron, 1, 1.0745e-5,
+electron, 3, 3.7003-5,
+proton, 1, 4.9305e-2

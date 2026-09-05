@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 
 # TODO-TD: scale diffusion lengths to m instead of um
 
+# SR NIEL M.J. Boschini, P.G. Rancoita and M. Tacconi (2014), SR-NIEL–7 Calculator: Screened Relativistic (SR) Treatment for NIEL Dose, Nuclear and Electronic Stopping Power Calculator (version 11.1); website https://www.sr-niel.org/ accessed on [year, month ].
+
 def main():
     COLORS = {
         'electron': "#1f26b4",
@@ -96,7 +98,7 @@ def main():
     f2.savefig('./data/L_p_fluence_DDD.png')
     plt.close(f2)
 
-    def I02_DDD(I_02_0, DDD, DDD_0):
+    def I02_DDD_model(I_02_0, DDD, DDD_0):
         return I_02_0 * (1 + DDD/DDD_0)
 
     f3, a1 = plt.subplots(1, 1, figsize=(6, 6))

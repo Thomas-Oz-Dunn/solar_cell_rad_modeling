@@ -1,10 +1,17 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+from textwrap import wrap
 
 # TODO-TD: scale diffusion lengths to m instead of um
 
 # SR NIEL M.J. Boschini, P.G. Rancoita and M. Tacconi (2014), SR-NIEL–7 Calculator: Screened Relativistic (SR) Treatment for NIEL Dose, Nuclear and Electronic Stopping Power Calculator (version 11.1); website https://www.sr-niel.org/ accessed on [year, month ].
 
+# TODO-TD: add/drop 0 DDD case
+# GaAs,electron,1.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
+# GaAs,electron,3.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
+
+# TODO-TD: add flags for loglog vs linlin
 def main():
     COLORS = {
         'electron': "#1f26b4",
@@ -29,7 +36,8 @@ def main():
         ax, 
         x_col,
         y_col,
-        do_line=False
+        do_line=False,
+        do_fit=False,
     ):
         """
         Combine same plot technique
@@ -47,7 +55,7 @@ def main():
                             sub2df[y_col],
                             marker=MeV_MARKERS.get(energy, 'o'),
                             color=COLORS.get(ptype, 'gray'),
-                            label=f"{ptype}, {energy} MeV, {material}",
+                            label=f"{energy} MeV {ptype}",
                         )
                     else:
                         ax.scatter(
@@ -55,9 +63,53 @@ def main():
                             sub2df[y_col],
                             marker=MeV_MARKERS.get(energy, 'o'),
                             color=COLORS.get(ptype, 'gray'),
-                            label=f"{ptype}, {energy} MeV, {material}",
+                            label=f"{energy} MeV {ptype}",
                         )
-        ax.legend(fontsize='small')
+
+        x = df2[x_col]
+        y = df2[y_col]
+        if do_fit and len(x) >= 2:
+
+            # mask out any NaNs before fitting
+            mask = ~(np.isnan(x) | np.isnan(y))
+            if mask.sum() >= 2:
+                logy = np.log10(y[mask])
+                results = np.polyfit(
+                    np.log10(x[mask]), 
+                    logy, 
+                    1,
+                    full=True,
+                )
+                slope, intercept = results[0]
+                # Residual or Sum of Square Error (SSE)
+                SSE = results[1][0]
+
+                # Determining the Sum of Square Total (SST)
+                # the squared differences between the observed dependent variable and its mean
+                diffs = logy - logy.mean()
+                square_diff = diffs ** 2
+                SST = square_diff.sum()
+
+                R2 = 1 - SSE/SST 
+
+                x_fit = np.linspace(
+                    np.log10(x[mask]).min(), 
+                    np.log10(x[mask]).max(), 
+                    100,
+                )
+                y_fit = slope * x_fit + intercept
+                equa = f'log10({y_col}) = {slope:0.4g} * log10({x_col}) + {intercept:0.4g} (R^2 = {R2:0.4g})'
+                wrapped = '\n'.join(wrap(equa, 20))
+                ax.plot(
+                    10 ** (x_fit), 
+                    10 ** (y_fit),
+                    color='k',
+                    ls='--',
+                    linewidth=3,
+                    alpha=0.8,
+                    label=wrapped,
+                )
+        ax.legend()
 
     f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
     a1.grid(ls='--', which='both')
@@ -69,11 +121,12 @@ def main():
     plt.tight_layout()
 
     a2.grid(ls='--', which='both')
-    plot_grouped(a2, 'DDD', 'L_n')
+    plot_grouped(a2, 'DDD', 'L_n', do_fit=True)
     a2.set_xlabel('DDD (MeV/g)')
     a2.set_xscale('log')
     a2.set_yscale('log')
     f1.suptitle('${L}_{n}$ vs Fluence & DDD in GaAs')
+
     plt.tight_layout()
 
     f1.savefig('./data/L_n_fluence_DDD.png')

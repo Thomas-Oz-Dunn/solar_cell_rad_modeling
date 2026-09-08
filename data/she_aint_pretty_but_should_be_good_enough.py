@@ -35,8 +35,30 @@ def fit_diffusion_length_fluence(fluence, diffusion_length):
     return popt, perr
 
     
+def linear_log_log_fit(x, y):
+    # Linear fit in log space
 
-# TODO-TD: add flags for loglog vs linlin
+    logy = np.log10(y)
+    results = np.polyfit(
+        np.log10(x), 
+        logy, 
+        1,
+        full=True,
+    )
+    slope, intercept = results[0]
+    # Residual or Sum of Square Error (SSE)
+    SSE = results[1][0]
+
+    # Determining the Sum of Square Total (SST)
+    # the squared differences between the observed dependent variable and its mean
+    diffs = logy - logy.mean()
+    square_diff = diffs ** 2
+    SST = square_diff.sum()
+
+    R2 = 1 - SSE/SST 
+    return slope, intercept, R2
+
+# TODO-TD: add flags for loglog vs linlin plotting
 def main():
     COLORS = {
         'electron': "#1f26b4",
@@ -100,25 +122,7 @@ def main():
             # mask out any NaNs before fitting
             mask = ~(np.isnan(x) | np.isnan(y))
             if mask.sum() >= 2:
-                logy = np.log10(y[mask])
-                results = np.polyfit(
-                    np.log10(x[mask]), 
-                    logy, 
-                    1,
-                    full=True,
-                )
-                slope, intercept = results[0]
-                # Residual or Sum of Square Error (SSE)
-                SSE = results[1][0]
-
-                # Determining the Sum of Square Total (SST)
-                # the squared differences between the observed dependent variable and its mean
-                diffs = logy - logy.mean()
-                square_diff = diffs ** 2
-                SST = square_diff.sum()
-
-                R2 = 1 - SSE/SST 
-
+                slope, intercept, R2 = linear_log_log_fit(x[mask], y[mask])
                 x_fit = np.linspace(
                     np.log10(x[mask]).min(), 
                     np.log10(x[mask]).max(), 
@@ -132,10 +136,22 @@ def main():
                     10 ** (y_fit),
                     color='k',
                     ls='--',
-                    linewidth=3,
+                    linewidth=1,
                     alpha=0.8,
                     label=wrapped,
                 )
+
+            popt, perr = fit_diffusion_length_fluence(x[mask], y[mask])
+            y_fit_2 = diffusion_length_fluence(x[mask], popt[0], popt[1])
+            ax.plot(
+                x[mask],
+                y_fit_2,
+                color='g',
+                ls='--',
+                alpha=0.8,
+                label=f'1/L^2 fit L_0={popt[0]:0.4g} K_L={popt[1]:0.4g} perr={perr[0]:0.4g} {perr[1]:0.4g}'
+            )
+
         ax.legend()
 
     f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))

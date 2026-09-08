@@ -18,10 +18,11 @@ def diffusion_length_fluence(fluence, L_0, K_L):
     1/L^2 = 1/L_0^2 + K_L * phi
 
     """
+    print(K_L)
     den = 1 + L_0 * L_0 * K_L * fluence
     return L_0 * np.sqrt(1 / den)
 
-def fit_diffusion_length_fluence(fluence, diffusion_length):
+def fit_diffusion_length_fluence(fluences, diffusion_lengths):
     """
 
     Returns 
@@ -30,7 +31,13 @@ def fit_diffusion_length_fluence(fluence, diffusion_length):
 
     perr
     """
-    popt, pcov = curve_fit(diffusion_length_fluence, fluence, diffusion_length)
+    init = [10, 10]
+    popt, pcov = curve_fit(
+        diffusion_length_fluence, 
+        fluences, 
+        diffusion_lengths,
+        init,
+    )
     perr = np.sqrt(np.diag(pcov))
     return popt, perr
 
@@ -84,7 +91,8 @@ def main():
         x_col,
         y_col,
         do_line=False,
-        do_fit=False,
+        do_lin_fit=False,
+        do_model_fit=False,
     ):
         """
         Combine same plot technique
@@ -112,10 +120,30 @@ def main():
                             color=COLORS.get(ptype, 'gray'),
                             label=f"{energy} MeV {ptype}",
                         )
+                        
+                    if do_model_fit and len(sub2df[x_col]) >= 2:
+                        # For each particle energy
+                        popt, perr = fit_diffusion_length_fluence(
+                            sub2df[x_col], 
+                            sub2df[y_col],
+                        )
+                        y_fit_2 = diffusion_length_fluence(
+                            sub2df[x_col], 
+                            popt[0], 
+                            popt[1],
+                        )
+                        ax.plot(
+                            sub2df[x_col],
+                            y_fit_2,
+                            color=COLORS.get(ptype, 'gray'),
+                            ls='--',
+                            alpha=0.8,
+                            label=f'1/L^2 fit L_0={popt[0]:0.4g} K_L={popt[1]:0.4g} perr={perr[0]:0.4g} {perr[1]:0.4g}'
+                        )
 
         x = df2[x_col]
         y = df2[y_col]
-        if do_fit and len(x) >= 2:
+        if do_lin_fit and len(x) >= 2:
 
             # L_0 sqrt(1 / (1 +- L_0^2 K_L phi))?
 
@@ -140,23 +168,11 @@ def main():
                     alpha=0.8,
                     label=wrapped,
                 )
-
-            popt, perr = fit_diffusion_length_fluence(x[mask], y[mask])
-            y_fit_2 = diffusion_length_fluence(x[mask], popt[0], popt[1])
-            ax.plot(
-                x[mask],
-                y_fit_2,
-                color='g',
-                ls='--',
-                alpha=0.8,
-                label=f'1/L^2 fit L_0={popt[0]:0.4g} K_L={popt[1]:0.4g} perr={perr[0]:0.4g} {perr[1]:0.4g}'
-            )
-
         ax.legend()
 
     f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
     a1.grid(ls='--', which='both')
-    plot_grouped(a1, 'fluence (e/cm^2)', 'L_n', True)
+    plot_grouped(a1, 'fluence (e/cm^2)', 'L_n', True, do_model_fit=True)
     a1.set_xlabel('Fluence $(n/{cm}^{2})$')
     a1.set_ylabel('${L}_{n}$ (um)')
     a1.set_xscale('log')
@@ -164,7 +180,7 @@ def main():
     plt.tight_layout()
 
     a2.grid(ls='--', which='both')
-    plot_grouped(a2, 'DDD', 'L_n', do_fit=True)
+    plot_grouped(a2, 'DDD', 'L_n', do_lin_fit=True)
     a2.set_xlabel('DDD (MeV/g)')
     a2.set_xscale('log')
     a2.set_yscale('log')

@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import curve_fit
 from textwrap import wrap
 
 # TODO-TD: scale diffusion lengths to m instead of um
@@ -10,6 +11,30 @@ from textwrap import wrap
 # TODO-TD: add/drop 0 DDD case
 # GaAs,electron,1.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
 # GaAs,electron,3.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
+
+# TODO-TD: poly fit K_L to data present
+def diffusion_length_fluence(fluence, L_0, K_L):
+    """
+    1/L^2 = 1/L_0^2 + K_L * phi
+
+    """
+    den = 1 + L_0 * L_0 * K_L * fluence
+    return L_0 * np.sqrt(1 / den)
+
+def fit_diffusion_length_fluence(fluence, diffusion_length):
+    """
+
+    Returns 
+    -------
+    popt
+
+    perr
+    """
+    popt, pcov = curve_fit(diffusion_length_fluence, fluence, diffusion_length)
+    perr = np.sqrt(np.diag(pcov))
+    return popt, perr
+
+    
 
 # TODO-TD: add flags for loglog vs linlin
 def main():
@@ -69,6 +94,8 @@ def main():
         x = df2[x_col]
         y = df2[y_col]
         if do_fit and len(x) >= 2:
+
+            # L_0 sqrt(1 / (1 +- L_0^2 K_L phi))?
 
             # mask out any NaNs before fitting
             mask = ~(np.isnan(x) | np.isnan(y))

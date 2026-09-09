@@ -6,6 +6,9 @@ import pandas as pd
 from pathlib import Path
 import scipy.constants as const
 
+def V_OC(I_SC, I_0, ideality, temperature):
+    return ideality * const.k * temperature / const.q * np.ln(I_SC / I_0 + 1)
+
 def wavelength_to_freq(wavelength):
     return const.c / wavelength
 

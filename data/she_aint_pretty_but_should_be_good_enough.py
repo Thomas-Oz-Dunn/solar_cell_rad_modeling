@@ -12,17 +12,24 @@ from textwrap import wrap
 # GaAs,electron,1.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
 # GaAs,electron,3.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
 
-# TODO-TD: poly fit K_L to data present
+# TODO-TD: should we do this in logspace?
+
 def diffusion_length_fluence(fluence, L_0, K_L):
     """
-    1/L^2 = 1/L_0^2 + K_L * phi
-
+    1/L_phi^2 = 1/L_0^2 + K_L * phi
+    L_0 ^2 = L_phi^2 ( 1 + L_0^2 * K_L * phi)
+    L_phi^2 = L_0 ^2 / ( 1 + L_0^2 * K_L * phi)
+    L_phi = sqrt( L_0 ^2 / ( 1 + L_0^2 * K_L * phi))
+    L_phi = L_0 * sqrt( 1 / ( 1 + L_0^2 * K_L * phi))
     """
-    print(K_L)
     den = 1 + L_0 * L_0 * K_L * fluence
     return L_0 * np.sqrt(1 / den)
 
-def fit_diffusion_length_fluence(fluences, diffusion_lengths):
+def fit_diffusion_length_fluence(
+    fluences, 
+    diffusion_lengths,
+    p0=None # TODO-TD: use kwargs and unpack
+):
     """
 
     Returns 
@@ -31,17 +38,21 @@ def fit_diffusion_length_fluence(fluences, diffusion_lengths):
 
     perr
     """
-    init = [10, 10]
+    if p0 is None:
+        p0 = [1e4, 1e-16]
+
     popt, pcov = curve_fit(
-        diffusion_length_fluence, 
-        fluences, 
+        diffusion_length_fluence,
+        fluences,
         diffusion_lengths,
-        init,
+        p0=p0,
+        bounds=([0, 0], [np.inf, np.inf]), # Both Positive
+        max_nfev=1e6,
     )
     perr = np.sqrt(np.diag(pcov))
     return popt, perr
 
-    
+
 def linear_log_log_fit(x, y):
     # Linear fit in log space
 
@@ -123,10 +134,19 @@ def main():
                         
                     if do_model_fit and len(sub2df[x_col]) >= 2:
                         # For each particle energy
-                        popt, perr = fit_diffusion_length_fluence(
-                            sub2df[x_col], 
-                            sub2df[y_col],
-                        )
+
+                        if ptype == 'electron':
+                            popt, perr = fit_diffusion_length_fluence(
+                                sub2df[x_col], 
+                                sub2df[y_col],
+                                p0=[1e15, 1e-14],
+                            )
+                        else:
+                            popt, perr = fit_diffusion_length_fluence(
+                                sub2df[x_col], 
+                                sub2df[y_col],
+                            )
+
                         y_fit_2 = diffusion_length_fluence(
                             sub2df[x_col], 
                             popt[0], 

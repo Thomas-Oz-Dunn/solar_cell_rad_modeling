@@ -8,7 +8,7 @@ from textwrap import wrap
 
 # SR NIEL M.J. Boschini, P.G. Rancoita and M. Tacconi (2014), SR-NIEL–7 Calculator: Screened Relativistic (SR) Treatment for NIEL Dose, Nuclear and Electronic Stopping Power Calculator (version 11.1); website https://www.sr-niel.org/ accessed on [year, month ].
 
-# TODO-TD: add/drop 0 DDD case
+# TODO-TD: add/drop 0 DDD cases
 # GaAs,electron,1.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
 # GaAs,electron,3.,0.,1E-16, 1.3E-8, 2.,4.8e16,1.32,8.0,0.15
 
@@ -28,7 +28,9 @@ def diffusion_length_fluence(fluence, L_0, K_L):
 def fit_diffusion_length_fluence(
     fluences, 
     diffusion_lengths,
-    p0=None # TODO-TD: use kwargs and unpack
+    p0=None, # TODO-TD: use kwargs and unpack
+    log_space=True,
+    max_n_steps=1e12,
 ):
     """
 
@@ -41,13 +43,22 @@ def fit_diffusion_length_fluence(
     if p0 is None:
         p0 = [1e4, 1e-16]
 
+    if log_space:
+        def model(fluence, L_0, K_L):
+            return np.log10(diffusion_length_fluence(fluence, L_0, K_L))
+
+        ydata = np.log10(diffusion_lengths)
+    else:
+        model = diffusion_length_fluence
+        ydata = diffusion_lengths
+
     popt, pcov = curve_fit(
-        diffusion_length_fluence,
+        model,
         fluences,
-        diffusion_lengths,
+        ydata,
         p0=p0,
         bounds=([0, 0], [np.inf, np.inf]), # Both Positive
-        max_nfev=1e6,
+        max_nfev=max_n_steps,
     )
     perr = np.sqrt(np.diag(pcov))
     return popt, perr
@@ -101,7 +112,7 @@ def main():
         ax, 
         x_col,
         y_col,
-        do_line=False,
+        plot_line=False,
         do_lin_fit=False,
         do_model_fit=False,
     ):
@@ -115,7 +126,7 @@ def main():
                 for material in sub_e['material'].unique():
                     sub2df = sub_e[sub_e['material'] == material].sort_values(x_col)
                     # TODO-TD: use kwargs
-                    if do_line:
+                    if plot_line:
                         ax.plot(
                             sub2df[x_col],
                             sub2df[y_col],
@@ -134,12 +145,11 @@ def main():
                         
                     if do_model_fit and len(sub2df[x_col]) >= 2:
                         # For each particle energy
-
                         if ptype == 'electron':
                             popt, perr = fit_diffusion_length_fluence(
                                 sub2df[x_col], 
                                 sub2df[y_col],
-                                p0=[1e15, 1e-14],
+                                p0=[10, 1e-20],
                             )
                         else:
                             popt, perr = fit_diffusion_length_fluence(
@@ -192,18 +202,18 @@ def main():
 
     f1, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
     a1.grid(ls='--', which='both')
-    plot_grouped(a1, 'fluence (e/cm^2)', 'L_n', True, do_model_fit=True)
+    plot_grouped(a1, 'fluence (e/cm^2)', 'L_n', True, do_model_fit=False)
     a1.set_xlabel('Fluence $(n/{cm}^{2})$')
     a1.set_ylabel('${L}_{n}$ (um)')
     a1.set_xscale('log')
-    a1.set_yscale('log')
+    # a1.set_yscale('log')
     plt.tight_layout()
 
     a2.grid(ls='--', which='both')
-    plot_grouped(a2, 'DDD', 'L_n', do_lin_fit=True)
+    plot_grouped(a2, 'DDD', 'L_n', do_lin_fit=False, do_model_fit=True)
     a2.set_xlabel('DDD (MeV/g)')
     a2.set_xscale('log')
-    a2.set_yscale('log')
+    # a2.set_yscale('log')
     f1.suptitle('${L}_{n}$ vs Fluence & DDD in GaAs')
 
     plt.tight_layout()
@@ -216,13 +226,13 @@ def main():
     plot_grouped(a1, 'fluence (e/cm^2)', 'L_p', True)
     a1.set_xlabel('Fluence $(n/{cm}^{2})$')
     a1.set_xscale('log')
-    a1.set_yscale('log')
+    # a1.set_yscale('log')
     a1.set_ylabel('${L}_{p}$ (um)')
     plt.tight_layout()
 
     a2.set_xlabel('DDD (MeV/g)')
     a2.set_xscale('log')
-    a2.set_yscale('log')
+    # a2.set_yscale('log')
     a2.grid(ls='--', which='both')
     plot_grouped(a2, 'DDD', 'L_p')
     f2.suptitle('${L}_{p}$ vs Fluence & DDD in GaAs')

@@ -190,6 +190,8 @@ def eqe_dynamic_alpha_InP_300K(
 
 def calc_InP_300K_eqe_dist(thickness, recomb_rate):
     """
+    # TODO-TD: plot
+    
     EQE across the full AM0 spectrum (data/wmo.csv) for InP at 300K.
     """
     df = pd.read_csv(Path('./data/wmo.csv'), delim_whitespace=True)

@@ -95,6 +95,8 @@ def eqe(
 
 def calc_InP_absorbtion_coeff_300K(frequency):
     """
+
+    TODO-TD: GaAs equivalent?
     Calculate alpha for InP at 300K
 
     from Yamaguchi, Uemera 1984
@@ -142,7 +144,8 @@ def eqe_dynamic_alpha_InP_300K(
         incident_power
     )
 
-def plot_spectral_eqe(thickness, recomb_rate, ax=None):
+def plot_spectral_eqe(thickness, recomb_rate, material, ax=None):
+    # TODO-TD: cut off frequency based on thickness?
     if ax is None:
         fig, ax = plt.subplots(1, 1)
 
@@ -154,10 +157,9 @@ def plot_spectral_eqe(thickness, recomb_rate, ax=None):
         .str.replace(' eV', '')
         .astype(float)
     )
-
     eg_joules = eV_to_joules(
         material_df.loc[
-            material_df['Material'] == 'InP',
+            material_df['Material'] == material,
             'Bandgap (Eg)'
         ]
     )
@@ -167,20 +169,34 @@ def plot_spectral_eqe(thickness, recomb_rate, ax=None):
     wavelengths_m = wavelengths_nm * 1e-9
     power_density = df['W/sm/nm'].to_numpy()
 
+    print(wavelength_m_eg)
     eqe_vals = eqe_dynamic_alpha_InP_300K(
         thickness,
         wavelengths_m,
         recomb_rate,
         power_density,
     )
-    wavelengths_nm = np.where(wavelengths_m <= wavelength_m_eg, wavelengths_nm, None)
-    eqe_vals = np.where(wavelengths_m <= wavelength_m_eg, eqe_vals, None)
+    wavelengths_nm = np.where(
+        wavelengths_m <= wavelength_m_eg, 
+        wavelengths_nm, 
+        None,
+    )
+    print(wavelengths_nm)
+    eqe_vals = np.where(
+        wavelengths_m <= wavelength_m_eg, 
+        eqe_vals, 
+        None,
+    )
 
-    ax.plot(wavelengths_nm, eqe_vals, label=f'thickness: {thickness} R: {recomb_rate}')
+    ax.plot(
+        wavelengths_nm, 
+        eqe_vals, 
+        label=f'thickness: {thickness} R: {recomb_rate}',
+    )
     plt.grid(ls='--')
     ax.set_xlabel('Wavelength (nm)')
     ax.set_ylabel('EQE')
-    ax.set_title('InP Spectral EQE')
+    ax.set_title(f'{material} Spectral EQE')
 
     return ax
 
@@ -389,7 +405,7 @@ def main():
 
     plt.tight_layout()
 
-    f1.savefig('./data/L_n_fluence_DDD.png')
+    f1.savefig('./processing/L_n_fluence_DDD.png')
     plt.close(f1)
 
     f2, (a1, a2) = plt.subplots(1, 2, figsize=(12, 6))
@@ -408,7 +424,7 @@ def main():
     plot_grouped(a2, 'DDD', 'L_p')
     f2.suptitle('${L}_{p}$ vs Fluence & DDD in GaAs')
     plt.tight_layout()
-    f2.savefig('./data/L_p_fluence_DDD.png')
+    f2.savefig('./processing/L_p_fluence_DDD.png')
     plt.close(f2)
 
     def I02_DDD_model(I_02_0, DDD, DDD_0):
@@ -422,7 +438,7 @@ def main():
     a1.grid(ls='--', which='both')
     plot_grouped(a1, 'DDD', 'I_02', True)
     a1.set_title('${I}_{02}$ vs DDD in GaAs')
-    f3.savefig('./data/I02_DDD.png')
+    f3.savefig('./processing/I02_DDD.png')
     plt.close(f3)
 
     f_eqe, a_eqe = plt.subplots(1, 1, figsize=(6, 6))
@@ -430,14 +446,31 @@ def main():
     # Excess carriers Δn ≈ 1e14 cm⁻³ (1e20 m⁻³), 
     # τ_eff ≈ 10 ns (1e-8 s)
     thickness1 = 2e-3
-    thickness2 = 2e-2
     recomb_rate_SI = 1e20 / 1e-8  # 1e28 m⁻³ s⁻¹
     a_eqe = plot_spectral_eqe(
-        thickness1, recomb_rate_SI, a_eqe)
+        thickness1, 
+        recomb_rate_SI, 
+        'InP',
+        a_eqe,
+    )
+    thickness2 = 2e-2
     a_eqe = plot_spectral_eqe(
-        thickness2, recomb_rate_SI, a_eqe)
+        thickness2, 
+        recomb_rate_SI, 
+        'InP',
+        a_eqe,
+    )
+    thickness2 = 2e-1
+    a_eqe = plot_spectral_eqe(
+        thickness2, 
+        recomb_rate_SI, 
+        'InP',
+        a_eqe,
+    )
     a_eqe.legend()
-    f_eqe.savefig('./data/InP_EQE.png')
+    f_eqe.savefig('./processing/InP_EQE.png')
+
+    print('Plots can be found in ./processing/')
 
 if __name__ == '__main__':
     main()

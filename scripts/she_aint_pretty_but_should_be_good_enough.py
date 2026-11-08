@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 from textwrap import wrap
-from pathlib import Path
-import scipy.constants as const
+
+from rosci.utils import diffusion_length_fluence
+from rosci.plotting import plot_spectral_eqe
 
 # TODO-TD: scale diffusion lengths to m instead of um
 
@@ -17,200 +18,6 @@ import scipy.constants as const
 # TODO-TD: should we do this in logspace?
 
 # TODO-TD: Spectral EQE plots?
-
-def wavelength_to_freq(wavelength):
-    return const.c / wavelength
-
-def freq_to_energy(frequency):
-    """
-    Photon energy in Joules (E = h*f)
-    """
-    return const.h * frequency
-
-def wavelength_to_energy(wavelength):
-    """
-    Photon energy in Joules
-    """
-    return freq_to_energy(wavelength_to_freq(wavelength))
-
-def energy_to_wavelength(energy):
-    """
-    Parameters
-    ----------
-    energy
-        Photon energy in Joules
-        If you have eV, multiply by
-        const.e first to convert to Joules.
-    """
-    freq = energy / const.h
-    return const.c / freq
-
-def joules_to_eV(energy_j):
-    """
-    Convert Joules -> electronvolts. 
-    1 eV = const.e Joules
-    """
-    return energy_j / const.e
-
-def eV_to_joules(energy_ev):
-    """
-    Convert electronvolts -> Joules.
-    """
-    return energy_ev * const.e
-
-
-
-def eqe(
-    thickness,
-    absorption_coeff,
-    wavelength,
-    recomb_rate,
-    incident_power
-):
-    """
-    Calculate External Quantum Efficiency (EQE) from Livingston 2025
-
-    Impact of device design parameters on quantum efficiency of solar cell and 
-    revelation of recombination mechanism
-
-    Parameters
-    ----------
-    thickness
-        thickness of material
-
-    absorbtion_coeff
-        material absorbtion coefficient alpha
-
-    wavelength
-        Wavelength of light
-
-    recomb_rate
-        Material recombination rate
-
-    incident_power
-        Incident power at wavelength
-    """
-    photon_energy = wavelength_to_energy(wavelength)
-    return thickness * (absorption_coeff - photon_energy * recomb_rate / incident_power)
-
-def calc_InP_absorbtion_coeff_300K(frequency):
-    """
-
-    TODO-TD: GaAs equivalent?
-    Calculate alpha for InP at 300K
-
-    from Yamaguchi, Uemera 1984
-    Electron Irradiation Damage in
-    Radiation-Resistant InP Solar Cells
-
-    Parameters
-    ----------
-    frequency
-        Photon frequency (Hz)
-
-    Returns
-    -------
-    Absorption coefficient alpha, same shape as `frequency`. 
-    Values below the 1.31 eV absorption edge return np.nan
-    """
-    frequency = np.asarray(frequency, dtype=float)
-
-    eV = joules_to_eV(freq_to_energy(frequency))
-
-    # Vectorized
-    condlist = [eV > 1.58, (eV > 1.31) & (eV <= 1.58)]
-    choicelist = [1.1e7 * np.exp(-9.9 / eV), 4e4 * np.sqrt(eV - 1.31)]
-
-    # Vectorized piecewise selection
-    return np.select(condlist, choicelist, default=np.nan)
-
-
-def eqe_dynamic_alpha_InP_300K(
-    thickness,
-    wavelength,
-    recomb_rate,
-    incident_power
-):
-    """
-    EQE for InP at 300K using the wavelength-dependent alpha model above.
-    """
-    freq = wavelength_to_freq(wavelength)
-    alpha = calc_InP_absorbtion_coeff_300K(freq)
-    return eqe(
-        thickness,
-        alpha,
-        wavelength,
-        recomb_rate,
-        incident_power
-    )
-
-def plot_spectral_eqe(thickness, recomb_rate, material, ax=None):
-    # TODO-TD: cut off frequency based on thickness?
-    if ax is None:
-        fig, ax = plt.subplots(1, 1)
-
-    df = pd.read_csv(Path('./data/wmo.csv'), sep=r'\s+')
-
-    material_df = pd.read_csv(Path('./data/semiconductors.csv'))
-    material_df['Bandgap (Eg)'] = (
-        material_df['Bandgap (Eg)']
-        .str.replace(' eV', '')
-        .astype(float)
-    )
-    eg_joules = eV_to_joules(
-        material_df.loc[
-            material_df['Material'] == material,
-            'Bandgap (Eg)'
-        ]
-    )
-    wavelength_m_eg = energy_to_wavelength(eg_joules.iloc[0])
-
-    wavelengths_nm = df['nm'].to_numpy()
-    wavelengths_m = wavelengths_nm * 1e-9
-    power_density = df['W/sm/nm'].to_numpy()
-
-    print(wavelength_m_eg)
-    eqe_vals = eqe_dynamic_alpha_InP_300K(
-        thickness,
-        wavelengths_m,
-        recomb_rate,
-        power_density,
-    )
-    wavelengths_nm = np.where(
-        wavelengths_m <= wavelength_m_eg, 
-        wavelengths_nm, 
-        None,
-    )
-    print(wavelengths_nm)
-    eqe_vals = np.where(
-        wavelengths_m <= wavelength_m_eg, 
-        eqe_vals, 
-        None,
-    )
-
-    ax.plot(
-        wavelengths_nm, 
-        eqe_vals, 
-        label=f'thickness: {thickness} R: {recomb_rate}',
-    )
-    plt.grid(ls='--')
-    ax.set_xlabel('Wavelength (nm)')
-    ax.set_ylabel('EQE')
-    ax.set_title(f'{material} Spectral EQE')
-
-    return ax
-
-
-def diffusion_length_fluence(fluence, L_0, K_L):
-    """
-    1/L_phi^2 = 1/L_0^2 + K_L * phi
-    L_0 ^2 = L_phi^2 ( 1 + L_0^2 * K_L * phi)
-    L_phi^2 = L_0 ^2 / ( 1 + L_0^2 * K_L * phi)
-    L_phi = sqrt( L_0 ^2 / ( 1 + L_0^2 * K_L * phi))
-    L_phi = L_0 * sqrt( 1 / ( 1 + L_0^2 * K_L * phi))
-    """
-    den = 1 + L_0 * L_0 * K_L * fluence
-    return L_0 * np.sqrt(1 / den)
 
 def fit_diffusion_length_fluence(
     fluences, 
@@ -469,6 +276,8 @@ def main():
     )
     a_eqe.legend()
     f_eqe.savefig('./processing/InP_EQE.png')
+
+    # GaAs absorption coefficient needed, but plot spectral
 
     print('Plots can be found in ./processing/')
 

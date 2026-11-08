@@ -1,0 +1,5 @@
+material,particle type,energy (MeV),NIEL (MeV cm^2/g)
+GaAs,electron,1.,1.0745E-5
+GaAs,electron,3.,3.7003E-5
+GaAs,electron,10.,6.8628E-5
+GaAs,proton,1.,4.9305E-2

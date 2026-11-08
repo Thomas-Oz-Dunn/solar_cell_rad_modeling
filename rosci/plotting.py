@@ -1,203 +1,64 @@
-# Radiation-Optimizing Solar Cell Investigator (ROSCI)
-
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 from pathlib import Path
-import scipy.constants as const
+from rosci.utils import eV_to_joules, energy_to_wavelength, eqe_dynamic_alpha_InP_300K, vegards_law
 
-def wavelength_to_freq(wavelength):
-    return const.c / wavelength
+def plot_spectral_eqe(thickness, recomb_rate, material, ax=None):
+    # TODO-TD: cut off frequency based on thickness?
+    if ax is None:
+        fig, ax = plt.subplots(1, 1)
 
-def freq_to_energy(frequency):
-    """
-    Photon energy in Joules (E = h*f)
-    """
-    return const.h * frequency
+    df = pd.read_csv(Path('./data/wmo.csv'), sep=r'\s+')
 
-def wavelength_to_energy(wavelength):
-    """
-    Photon energy in Joules
-    """
-    return freq_to_energy(wavelength_to_freq(wavelength))
-
-def energy_to_wavelength(energy):
-    """
-    Parameters
-    ----------
-    energy
-        Photon energy in Joules
-        If you have eV, multiply by
-        const.e first to convert to Joules.
-    """
-    freq = energy / const.h
-    return const.c / freq
-
-def joules_to_eV(energy_j):
-    """
-    Convert Joules -> electronvolts. 
-    1 eV = const.e Joules
-    """
-    return energy_j / const.e
-
-def eV_to_joules(energy_ev):
-    """
-    Convert electronvolts -> Joules.
-    """
-    return energy_ev * const.e
-
-
-def vegards_law(
-    a_A,
-    a_B,
-    x,
-    b=None
-):
-    """
-    Interpolate between materials
-    Lattice constant calculator
-
-    https://en.wikipedia.org/wiki/Vegard%27s_law
-    a_(A_(1-x)B_x) = (1-x) a_A + x a_B
-
-    Use b for bandgap bowing parameter
-    """
-    if b is None:
-        return (1-x) * a_A + x * a_B
-    else:
-        return (1-x) * a_A + x * a_B - b * x * (1 - x)
-
-
-def short_circuit_current(I_01, I_02, V_OC, ideality_factor, temperature,):
-    """
-    Calculate short circuit current from multi diode model
-
-    Parameters
-    ----------
-    I_01
-        Diode 1 (diffusion) reverse saturation current
-
-    I_02
-        Diode 2 (recombination) reverse saturation current
-
-    V_OC
-        Open circuit voltage
-
-    ideality_factor
-        Diode ideality factor (typically ~2 for diode 2, ~1 for diode 1)
-
-    temperature
-        Temperature in Kelvin. 
-            const.k is Boltzmann's constant in J/K
-            const.e is the elementary charge in C, 
-            so k*T/e has units of volts, as required for V_t (the thermal voltage).
-    """
-    V_t = (const.k * temperature) / const.e
-
-    # diffusion current in quasi-neutral region
-    diffusion_current = I_01 * np.exp(V_OC / V_t) 
-
-    # defect driven Recomb current in depletion region
-    recombination_current = I_02 * np.exp(V_OC / (ideality_factor * V_t)) 
-    
-    return diffusion_current + recombination_current
-
-
-
-def eqe(
-    thickness,
-    absorption_coeff,
-    wavelength,
-    recomb_rate,
-    incident_power
-):
-    """
-    Calculate External Quantum Efficiency (EQE) from Livingston 2025
-
-    Impact of device design parameters on quantum efficiency of solar cell and 
-    revelation of recombination mechanism
-
-    Parameters
-    ----------
-    thickness
-        thickness of material
-
-    absorbtion_coeff
-        material absorbtion coefficient alpha
-
-    wavelength
-        Wavelength of light
-
-    recomb_rate
-        Material recombination rate
-
-    incident_power
-        Incident power at wavelength
-    """
-    photon_energy = wavelength_to_energy(wavelength)
-    return thickness * (absorption_coeff - photon_energy * recomb_rate / incident_power)
-
-def calc_InP_absorbtion_coeff_300K(frequency):
-    """
-    Calculate alpha for InP at 300K
-
-    from Yamaguchi, Uemera 1984
-    Electron Irradiation Damage in
-    Radiation-Resistant InP Solar Cells
-
-    Parameters
-    ----------
-    frequency
-        Photon frequency (Hz)
-
-    Returns
-    -------
-    Absorption coefficient alpha, same shape as `frequency`. 
-    Values below the 1.31 eV absorption edge return np.nan
-    """
-    frequency = np.asarray(frequency, dtype=float)
-
-    eV = joules_to_eV(freq_to_energy(frequency))
-    if eV > 1.58:
-        return 1.1e7 * np.exp(-9.9 / eV)
-    elif eV > 1.31:
-        return 4e4 * np.sqrt(eV - 1.31)
-    else:
-        return np.nan
-
-
-def eqe_dynamic_alpha_InP_300K(
-    thickness,
-    wavelength,
-    recomb_rate,
-    incident_power
-):
-    """
-    EQE for InP at 300K using the wavelength-dependent alpha model above.
-    """
-    freq = wavelength_to_freq(wavelength)
-    alpha = calc_InP_absorbtion_coeff_300K(freq)
-    return eqe(
-        thickness,
-        alpha,
-        wavelength,
-        recomb_rate,
-        incident_power
+    material_df = pd.read_csv(Path('./data/semiconductors.csv'))
+    material_df['Bandgap (Eg)'] = (
+        material_df['Bandgap (Eg)']
+        .str.replace(' eV', '')
+        .astype(float)
     )
+    eg_joules = eV_to_joules(
+        material_df.loc[
+            material_df['Material'] == material,
+            'Bandgap (Eg)'
+        ]
+    )
+    wavelength_m_eg = energy_to_wavelength(eg_joules.iloc[0])
 
-def calc_InP_300K_eqe_dist(thickness, recomb_rate):
-    """
-    EQE across the full AM0 spectrum (data/wmo.csv) for InP at 300K.
-    """
-    df = pd.read_csv(Path('./data/wmo.csv'), delim_whitespace=True)
-    wavelengths = df['nm'].to_numpy()
+    wavelengths_nm = df['nm'].to_numpy()
+    wavelengths_m = wavelengths_nm * 1e-9
     power_density = df['W/sm/nm'].to_numpy()
-    return eqe_dynamic_alpha_InP_300K(
+
+    print(wavelength_m_eg)
+    eqe_vals = eqe_dynamic_alpha_InP_300K(
         thickness,
-        wavelengths,
+        wavelengths_m,
         recomb_rate,
-        power_density
+        power_density,
     )
+    wavelengths_nm = np.where(
+        wavelengths_m <= wavelength_m_eg, 
+        wavelengths_nm, 
+        None,
+    )
+    print(wavelengths_nm)
+    eqe_vals = np.where(
+        wavelengths_m <= wavelength_m_eg, 
+        eqe_vals, 
+        None,
+    )
+
+    ax.plot(
+        wavelengths_nm, 
+        eqe_vals, 
+        label=f'thickness: {thickness} R: {recomb_rate}',
+    )
+    plt.grid(ls='--')
+    ax.set_xlabel('Wavelength (nm)')
+    ax.set_ylabel('EQE')
+    ax.set_title(f'{material} Spectral EQE')
+
+    return ax
 
 # TODO-TD: compare indirect and direct bandgaps?
 

@@ -194,3 +194,56 @@ def diffusion_length_fluence(fluence, L_0, K_L):
     """
     den = 1 + L_0 * L_0 * K_L * fluence
     return L_0 * np.sqrt(1 / den)
+
+def get_number(formula, i):
+    num_str = ""
+    # Collect digits and decimal points
+    while i < len(formula) and (formula[i].isdigit() or formula[i] == '.'):
+        num_str += formula[i]
+        i += 1
+        
+    if not num_str:
+        return 1.0, i
+        
+    # Convert to float if it contains a decimal, otherwise int
+    val = float(num_str) if '.' in num_str else int(num_str)
+    
+    # Check for optional percentage sign
+    if i < len(formula) and formula[i] == '%':
+        val = val / 100.0
+        i += 1
+        
+    return val, i
+
+def parse_alloy_formula(formula, i):
+    result = {}
+    while i < len(formula):
+        char = formula[i]
+        
+        if char.isupper():
+            name = char
+            i += 1
+            while i < len(formula) and formula[i].islower():
+                name += formula[i]
+                i += 1
+            count, i = get_number(formula, i)
+            result[name] += count
+            
+        elif char in "([{":
+            inner, i = parse_alloy_formula(formula, i + 1)
+            count, i = get_number(formula, i)
+            for atom in inner:
+                inner[atom] *= count
+            for atom, val in inner.items():
+                result[atom] += val
+                
+        elif char in ")]}":
+            return result, i + 1
+        else:
+            i += 1
+            
+    return result, i
+
+def parse_alloy(formula):
+    result, _ = parse_alloy_formula(formula, 0)
+    return dict(result)

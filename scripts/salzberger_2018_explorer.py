@@ -277,7 +277,7 @@ def main():
     a_eqe.legend()
     f_eqe.savefig('./processing/InP_EQE.png')
 
-    # GaAs absorption coefficient needed, but plot spectral
+    # TODO-TD: GaAs absorption coefficient needed, but plot spectral
 
     print('Plots can be found in ./processing/')
 

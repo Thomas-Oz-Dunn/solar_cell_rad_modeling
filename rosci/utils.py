@@ -3,11 +3,11 @@
 import numpy as np
 import scipy.constants as const
 
-def V_OC(I_SC, I_0, ideality, temperature):
-    return ideality * const.k * temperature / const.q * np.ln(I_SC / I_0 + 1)
-
 def wavelength_to_freq(wavelength):
     return const.c / wavelength
+
+def thermal_voltage(temperature):
+    return const.k * temperature / const.q
 
 def freq_to_energy(frequency):
     """
@@ -150,7 +150,11 @@ def vegards_law(
         return (1-x) * a_A + x * a_B - b * x * (1 - x)
 
 
-def short_circuit_current(I_01, I_02, V_OC, ideality_factor, temperature,):
+def V_OC(I_SC, I_0, ideality=1, temperature=300):
+    logI = np.ln(I_SC / I_0 + 1)
+    return ideality * thermal_voltage(temperature) * logI
+
+def short_circuit_current(I_01, I_02, V_OC, ideality_factor=1, temperature=300):
     """
     Calculate short circuit current from multi diode model
 
